@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 require "thor"
 require "git"
 require "erb"
@@ -91,3 +92,5 @@ END_TEMPLATE
     puts ERB.new(@@GENERATE_TEMPLATE, nil, '<>').result binding
   end
 end
+
+ReleaseNotes.start
