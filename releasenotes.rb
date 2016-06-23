@@ -61,12 +61,10 @@ END_TEMPLATE
   option :github
   def generate
     git = Git.open(options[:repo] || '.')
-    log = git.log(1000)
 
     opts = {
       repo:   options[:repo],
       github: options[:github],
-      # jira:   options[:jira],
     }
 
     opts[:from] = options[:from] || (git.tags.last ? git.tags.last.name : log.last) # most recent tag or earliest commit
@@ -74,13 +72,11 @@ END_TEMPLATE
 
     commits = []
     find_pr   = /#(\d+)/
-    # find_jira = /([A-Z]+-\d+)/
 
-    log.between(opts[:from], opts[:to]).each do |commit|
+    git.log.between(opts[:from], opts[:to]).each do |commit|
       message = commit.message
 
       message.gsub!(find_pr, "[#\\1](#{opts[:github]}/pull/\\1)")
-      # message.gsub!(find_jira, "[\\1](#{opts[:jira]}/browse/\\1)")
 
       parts = message.split("\n\n", 2)
 
