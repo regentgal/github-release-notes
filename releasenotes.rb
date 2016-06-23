@@ -6,6 +6,10 @@ require "ostruct"
 
 class ReleaseNotes < Thor
   @@GENERATE_TEMPLATE = <<-'END_TEMPLATE'
+## Customer Facing Changes
+
+## Non-Customer Facing Changes
+
 ## Stats
 
 * <%= commits.select{|c| c.pull}.length %> Pull Requests Merged
