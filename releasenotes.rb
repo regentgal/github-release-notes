@@ -3,10 +3,12 @@ require "thor"
 require "git"
 require "erb"
 require "ostruct"
-require 'pry'
 
 class ReleaseNotes < Thor
   @@GENERATE_TEMPLATE = <<-'END_TEMPLATE'
+
+# <%= title %>
+
 ## Customer Facing Changes
 
 ## Non-Customer Facing Changes
@@ -77,6 +79,8 @@ END_TEMPLATE
 
     opts[:from] = options[:from] || (git.tags.last ? git.tags.last.name : log.last) # most recent tag or earliest commit
     opts[:to]   = options[:to]   || log.first # most recent
+
+    title = git.tag(opts[:to]).message
 
     commits = []
     pr_number_regex = /#(\d+)/
