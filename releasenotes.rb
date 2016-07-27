@@ -3,6 +3,7 @@ require "thor"
 require "git"
 require "erb"
 require "ostruct"
+require 'pry'
 
 class ReleaseNotes < Thor
   @@GENERATE_TEMPLATE = <<-'END_TEMPLATE'
@@ -12,16 +13,23 @@ class ReleaseNotes < Thor
 
 ## Stats
 
+* <%= commits.select{|c| c.issues}.length %> Issues Addressed
 * <%= commits.select{|c| c.pull}.length %> Pull Requests Merged
 * <%= commits.length %> Commits by <%= commits.select{|c| c.author}.uniq{|c| c.author }.length %> Authors
 
 **[Complete GitHub History](<%= opts[:github] %>/compare/<%= opts[:from] %>...<%= opts[:to] %>)**
 
+## Issues Addressed
+<% commits.select{|c| c.issues }.each do |commit| %>
+  <% commit.issues.each do |issue| %>
+* [#<%= issue %>](<%= opts[:github] %>/issues/<%= issue %>)
+  <% end %>
+<% end %>
+
 ## Pull Requests
 
 <% commits.select{|c| c.pull }.each do |commit| %>
 * [#<%= commit.pull.first %>](<%= opts[:github] %>/pull/<%= commit.pull.first %>) — <%= commit.body %>
-
 <% end %>
 
 ## Commit History
@@ -71,12 +79,14 @@ END_TEMPLATE
     opts[:to]   = options[:to]   || log.first # most recent
 
     commits = []
-    find_pr   = /#(\d+)/
+    pr_number_regex = /#(\d+)/
+    find_pr_regex = /Merge pull request \[#(\d+)\]/
+    find_issues_regex = /(?:addresses|fixes|closes) \[#(\d+)\]/i
 
     git.log.between(opts[:from], opts[:to]).each do |commit|
       message = commit.message
 
-      message.gsub!(find_pr, "[#\\1](#{opts[:github]}/pull/\\1)")
+      message.gsub!(pr_number_regex, "[#\\1](#{opts[:github]}/pull/\\1)")
 
       parts = message.split("\n\n", 2)
 
@@ -85,7 +95,8 @@ END_TEMPLATE
         sha:     commit.sha,
         subject: parts[0],
         body:    parts[1],
-        pull:    commit.message.scan(find_pr).first,
+        pull:    commit.message.scan(find_pr_regex).first,
+        issues:  commit.message.scan(find_issues_regex).first,
       )
 
     end
