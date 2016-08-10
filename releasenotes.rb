@@ -87,7 +87,7 @@ END_TEMPLATE
     find_pr_regex = /Merge pull request \[#(\d+)\]/
     find_issues_regex = /(?:addresses|fixes|closes) \[#(\d+)\]/i
 
-    git.log.between(opts[:from], opts[:to]).each do |commit|
+    git.log(nil).between(opts[:from], opts[:to]).each do |commit|
       message = commit.message
 
       message.gsub!(pr_number_regex, "[#\\1](#{opts[:github]}/pull/\\1)")
