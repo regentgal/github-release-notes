@@ -3,8 +3,41 @@
 
 require "thor"
 require "git"
+require "octokit"
+require "logger"
 require "erb"
 require "ostruct"
+
+class GitHubCommitTags
+  attr_reader :client, :repository, :logger
+
+  def initialize(access_token:, repository:, logger: Logger.new(STDERR))
+    @client = Octokit::Client.new(access_token: access_token)
+    @repository = repository
+    @logger = logger
+  end
+
+  def special_deploy_requirements?(sha)
+    search_results = client.search_issues("#{sha} repo:#{repository} is:merged")
+
+    count = search_results.total_count
+
+    if count == 0
+      # There isn't a corresponding PR for this commit. This usually
+      # occurs for the commit that merges the master branch into the
+      # deploy branch.
+      return false
+    elsif count > 1
+      logger.warn("SHA #{sha} had #{search_results.total_count} issues, not just one; ignoring.")
+      return false
+    end
+
+    pr = search_results.items.first
+    labels = pr.labels.map(&:name)
+
+    labels.any? { |label| label =~ /special deploy requirements/i }
+  end
+end
 
 class ReleaseNotes < Thor
   @@GENERATE_TEMPLATE = <<-'END_TEMPLATE'
@@ -71,6 +104,7 @@ END_TEMPLATE
   option :from
   option :to
   option :github
+  option :gh_token
   def generate
     git = Git.open(options[:repo] || '.')
 
@@ -81,6 +115,13 @@ END_TEMPLATE
 
     opts[:from] = options[:from] || (git.tags.last ? git.tags.last.name : log.last) # most recent tag or earliest commit
     opts[:to]   = options[:to]   || log.first # most recent
+
+    gh_url = URI.parse(options[:github])
+    gh_repo_name = gh_url.path.split('/').reject(&:empty?).join('/')
+    commit_tags = GitHubCommitTags.new(
+      access_token: options[:gh_token],
+      repository: gh_repo_name
+    )
 
     title = git.tag(opts[:to]).message
 
@@ -96,6 +137,9 @@ END_TEMPLATE
 
       parts = message.split("\n\n", 2)
 
+      merge_commit = commit.parents.size > 1
+      special_deploy_requirements = merge_commit && commit_tags.special_deploy_requirements?(commit.sha)
+
       commits << OpenStruct.new(
         author:  commit.author.name,
         sha:     commit.sha,
@@ -103,10 +147,26 @@ END_TEMPLATE
         body:    parts[1],
         pull:    commit.message.scan(find_pr_regex).first,
         issues:  commit.message.scan(find_issues_regex).first,
+        special_deploy_requirements: special_deploy_requirements,
       )
 
     end
     puts ERB.new(@@GENERATE_TEMPLATE, nil, '<>').result binding
+
+    commits_with_special_deploy_requirements = commits.select(&:special_deploy_requirements)
+    unless commits_with_special_deploy_requirements.empty?
+      puts <<~EOF
+      ====================
+
+      WARNING: There are commits with special deploy requirements!
+      EOF
+
+      commits_with_special_deploy_requirements.each do |commit|
+        Array(commit.pull).each do |pull|
+          puts "* #{opts[:github]}/pull/#{pull}"
+        end
+      end
+    end
   end
 end
 
