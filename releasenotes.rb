@@ -56,7 +56,7 @@ class ReleaseNotes < Thor
 
 **[Complete GitHub History](<%= opts[:github] %>/compare/<%= opts[:from] %>...<%= opts[:to] %>)**
 
-## Issues Addressed
+## Issues Closed By Commits
 <% commits.select{|c| c.issues }.each do |commit| %>
   <% commit.issues.each do |issue| %>
 * [#<%= issue %>](<%= opts[:github] %>/issues/<%= issue %>)
@@ -128,7 +128,7 @@ END_TEMPLATE
     commits = []
     pr_number_regex = /#(\d+)/
     find_pr_regex = /Merge pull request \[#(\d+)\]/
-    find_issues_regex = /(?:addresses|fixes|closes) \[#(\d+)\]/i
+    find_issues_regex = /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved) \[#(\d+)\]/i
 
     git.log(nil).between(opts[:from], opts[:to]).each do |commit|
       message = commit.message
