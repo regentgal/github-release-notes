@@ -48,6 +48,16 @@ class ReleaseNotes < Thor
 
 ## Non-Customer Facing Changes
 
+## Special Deploy Requirements
+
+<% if commits.select(&:special_deploy_requirements).empty? %>
+None!
+<% else %>
+  <% commits.select(&:special_deploy_requirements).select{|c| c.pull}.each do |commit| %>
+    * [#<%= commit.pull.first %>](<%= opts[:github] %>/pull/<%= commit.pull.first %>) — <%= commit.body %>
+  <% end %>
+<% end %>
+
 ## Stats
 
 * <%= commits.select{|c| c.issues}.length %> Issues Addressed
