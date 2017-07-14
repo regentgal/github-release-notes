@@ -113,8 +113,8 @@ END_TEMPLATE
       github: options[:github],
     }
 
-    opts[:from] = options[:from] || (git.tags.last ? git.tags.last.name : log.last) # most recent tag or earliest commit
-    opts[:to]   = options[:to]   || log.first # most recent
+    opts[:from] = options[:from] || (git.tags.last ? git.tags.last.name : git.log.last) # most recent tag or earliest commit
+    opts[:to]   = options[:to]   || git.log.first # most recent
 
     gh_url = URI.parse(options[:github])
     gh_repo_name = gh_url.path.split('/').reject(&:empty?).join('/')
@@ -123,7 +123,7 @@ END_TEMPLATE
       repository: gh_repo_name
     )
 
-    title = git.tag(opts[:to]).message
+    title = (opts[:to].is_a? String) ? git.tag(opts[:to]).message : "Untitled"
 
     commits = []
     pr_number_regex = /#(\d+)/
